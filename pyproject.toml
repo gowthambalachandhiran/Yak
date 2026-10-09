@@ -1,0 +1,15 @@
+[project]
+name = "yak"
+version = "0.1.0"
+description = "A simple model from scratch"
+readme = "README.md"
+authors = [
+    { name = "Siddharta Govindaraj", email = "siddharta@silverstripesoftware.in" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

@@ -1,16 +1,10 @@
 # Yak
 
-Yak is an open source reimplementation of JEV, built from the ground up by a small team. The goal is simple: no black boxes. We write the tokenizer ourselves, pretrain a compact transformer ourselves, fine-tune it ourselves, and measure how well it knows what it doesn't know.
-
-The name comes from the yak, an animal that is small enough to look unassuming and tough enough to work at altitude. That is roughly the spirit we are going for: a modest model that holds up under real evaluation.
-
-## Status
-
-Early stage. We are following a five-week plan (see the roadmap below). This README will be updated as each stage lands, so some sections describe what we intend to build rather than what exists today.
+Yak is an open source reimplementation of JEV — a simple model from scratch — built from the ground up by a small team. The goal is to build a simple clone from scratch. We write the tokenizer ourselves, pretrain a compact transformer ourselves, fine-tune it ourselves, and measure how well it performs.
 
 ## What we are building
 
-Yak is a small encoder-style transformer trained with masked language modeling (MLM), then fine-tuned on a mix of general NLP tasks and evaluated for both accuracy and calibration.
+Yak is a small transformer trained with masked language modeling (MLM), then fine-tuned on a mix of general NLP tasks and finally adjusted with reinforcement learning.
 
 The pipeline has four pieces:
 
@@ -32,7 +26,7 @@ The pipeline has four pieces:
 
 With 4 heads and a model width of 256, each attention head works in 64 dimensions. Excluding embeddings, the four transformer layers come to roughly 3.1M parameters. The token embedding table adds about 7.7M more (30,000 x 256), so expect a model in the neighborhood of 11M parameters in total, depending on how positional embeddings and weight tying are handled.
 
-This is deliberately small. It lets the whole team train and debug on modest hardware, and it makes every experiment cheap enough to repeat.
+This is a small model for learning. It lets the whole team train and debug on modest hardware, and it makes every experiment cheap enough to repeat.
 
 ## Roadmap
 
@@ -46,39 +40,42 @@ This is deliberately small. It lets the whole team train and debug on modest har
 
 ## Planned repository layout
 
-This may shift as we build, but the rough shape is:
-
 ```
 yak/
-  tokenizer/     BPE implementation and tokenizer training
-  data/          corpus download, cleaning, and packing scripts
-  model/         transformer definition and config
-  pretrain/      MLM pretraining loop
-  finetune/      RLCD fine-tuning and dataset mixing
-  eval/          Brier score and benchmark evaluation
-  tests/
-  README.md
+  __init__.py    Package root
+  tokeniser/     BPE implementation and tokenizer training
+  data/          corpus download, cleaning, and packing scripts (planned)
+  model/         transformer definition and config (planned)
+  pretrain/      MLM pretraining loop (planned)
+  finetune/      RLCD fine-tuning and dataset mixing (planned)
+  eval/          Brier score and benchmark evaluation (planned)
+tests/
+  conftest.py
+  tokeniser/
+    test_bpe.py
 ```
 
 ## Getting started
 
-Setup instructions will go here once the first modules are in place. The plan is for everything to be runnable from a clean checkout with a single environment file and a handful of documented commands.
+Project Yak is maintained using [uv](https://docs.astral.sh/uv/).
 
-## Contributing
+### Prerequisites
 
-Yak is a team project and we welcome outside help once the core pipeline is stable. If you want to contribute:
+- Python 3.13+
+- [uv](https://docs.astral.sh/uv/#installation)
 
-- Open an issue before starting large changes so we can avoid duplicated work.
-- Keep pull requests focused. One change, one PR.
-- Add tests for anything that touches the tokenizer, since silent tokenization bugs are painful to find later.
+### Install dependencies
 
-## Team
+```bash
+# Install all dependencies (including dev dependencies)
+uv sync
+```
 
-Maintained by the Yak team. Contributor names will be added here.
+### Run tests
 
-## License
-
-To be decided before the first public release.
+```bash
+uv run pytest
+```
 
 ## Acknowledgments
 
