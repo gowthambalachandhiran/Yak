@@ -2,14 +2,15 @@ import math
 import torch
 from torch import nn
 
-class EmbedPos:
+class EmbedPos(nn.Module):
     def __init__(self,vocab_size,d_model=128,max_len=2048,pad_id=0,dropout=0.1):
+        super().__init__()
         self.vocab_size = vocab_size
         self.d_model = d_model
         self.max_len = max_len
         self.pad_id = pad_id
         self.dropout = nn.Dropout(dropout)
-        self.tok_embnn.Embedding(vocab_size, d_model, padding_idx=pad_id)
+        self.tok_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_id)
         self.register_buffer('pos_emb', self._get_positional_encoding(max_len, d_model))
 
     def _get_positional_encoding(self, max_len, d_model):
