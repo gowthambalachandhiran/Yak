@@ -1,4 +1,55 @@
 {
-  "datasets": {},
-  "max_num_labels": null
+  "datasets": {
+    "banking77": {
+      "sources": {
+        "train": "https://raw.githubusercontent.com/PolyAI-LDN/task-specific-datasets/master/banking_data/train.csv",
+        "test": "https://raw.githubusercontent.com/PolyAI-LDN/task-specific-datasets/master/banking_data/test.csv"
+      },
+      "raw_sha256": {
+        "banking77_train.csv": "b06e26ac675513959a63135f11b94ea7786ed02da65db93a5650d8838cbc664b",
+        "banking77_test.csv": "d12d6e3bc4c3103966ae786dc435913c0c563dfa328f5a3646d0e62cfeeb474d"
+      },
+      "splits": {
+        "train": 10003,
+        "test": 3080
+      },
+      "num_labels": 77,
+      "text_length": {
+        "mean_words": 11.9,
+        "p95_words": 29,
+        "max_words": 79
+      },
+      "eval_texts_also_in_train": {
+        "test": 7
+      },
+      "warnings": [],
+      "prepared_at_utc": "2026-10-25 09:33:19"
+    },
+    "clinc": {
+      "sources": {
+        "full": "https://raw.githubusercontent.com/clinc/oos-eval/master/data/data_full.json"
+      },
+      "raw_sha256": {
+        "clinc_data_full.json": "36923c3705a59e08fe9c3883d8bc2dd966ef93e22cb78ac41171782a698d56e0"
+      },
+      "splits": {
+        "train": 15100,
+        "validation": 3100,
+        "test": 5500
+      },
+      "num_labels": 151,
+      "text_length": {
+        "mean_words": 8.3,
+        "p95_words": 14,
+        "max_words": 28
+      },
+      "eval_texts_also_in_train": {
+        "validation": 3,
+        "test": 2
+      },
+      "warnings": [],
+      "prepared_at_utc": "2026-10-25 09:33:20"
+    }
+  },
+  "max_num_labels": 151
 }

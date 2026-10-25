@@ -29,7 +29,11 @@ import datetime
 import json
 import os
 import sys
+import ssl
+import urllib.request
 
+# Bypass SSL verification locally (useful if behind a corporate proxy / Zscaler / SSL inspection)
+ssl._create_default_https_context = ssl._create_unverified_context
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # lets the class files import each other when run as a script
 
 from FileUtils import log, write_json
@@ -54,7 +58,7 @@ def main():
     raw_dir = os.path.join(out_dir, "_raw")
     os.makedirs(out_dir, exist_ok=True)
     #Will update the code
-    
+
     manifest_path = os.path.join(out_dir, "manifest.json")
     manifest = {"datasets": {}}
     if os.path.exists(manifest_path):
