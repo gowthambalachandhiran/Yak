@@ -8,6 +8,7 @@ __pycache__/
 
 # Distribution / packaging
 ./Data
+!./Data/*.py
 .Python
 build/
 develop-eggs/
@@ -180,4 +181,3 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
-/Data
