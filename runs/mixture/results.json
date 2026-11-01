@@ -1,0 +1,226 @@
+{
+  "history": [
+    {
+      "epoch": 0,
+      "banking77_val_seen_acc": 0.029850746268656716,
+      "banking77_val_unseen_acc": 0.061224489795918366,
+      "clinc_val_seen_acc": 0.04,
+      "clinc_in_scope_acc": 0.013415892672858616,
+      "clinc_oos_recall": 0.8709677419354839,
+      "clinc_val_unseen_acc": 0.0,
+      "snli_val_seen_acc": 0.402,
+      "snli_val_unseen_acc": null
+    },
+    {
+      "epoch": 1,
+      "banking77_val_seen_acc": 0.2325870646766169,
+      "banking77_val_unseen_acc": 0.10714285714285714,
+      "clinc_val_seen_acc": 0.206,
+      "clinc_in_scope_acc": 0.2084623323013416,
+      "clinc_oos_recall": 0.12903225806451613,
+      "clinc_val_unseen_acc": 0.085,
+      "snli_val_seen_acc": 0.45,
+      "snli_val_unseen_acc": null
+    },
+    {
+      "epoch": 2,
+      "banking77_val_seen_acc": 0.3420398009950249,
+      "banking77_val_unseen_acc": 0.1683673469387755,
+      "clinc_val_seen_acc": 0.399,
+      "clinc_in_scope_acc": 0.40454076367389064,
+      "clinc_oos_recall": 0.22580645161290322,
+      "clinc_val_unseen_acc": 0.22166666666666668,
+      "snli_val_seen_acc": 0.477,
+      "snli_val_unseen_acc": null
+    },
+    {
+      "epoch": 3,
+      "banking77_val_seen_acc": 0.4092039800995025,
+      "banking77_val_unseen_acc": 0.21428571428571427,
+      "clinc_val_seen_acc": 0.487,
+      "clinc_in_scope_acc": 0.49638802889576883,
+      "clinc_oos_recall": 0.1935483870967742,
+      "clinc_val_unseen_acc": 0.26,
+      "snli_val_seen_acc": 0.475,
+      "snli_val_unseen_acc": null
+    },
+    {
+      "epoch": 4,
+      "banking77_val_seen_acc": 0.45149253731343286,
+      "banking77_val_unseen_acc": 0.23469387755102042,
+      "clinc_val_seen_acc": 0.535,
+      "clinc_in_scope_acc": 0.5469556243550051,
+      "clinc_oos_recall": 0.16129032258064516,
+      "clinc_val_unseen_acc": 0.24666666666666667,
+      "snli_val_seen_acc": 0.463,
+      "snli_val_unseen_acc": null
+    },
+    {
+      "epoch": 5,
+      "banking77_val_seen_acc": 0.4539800995024876,
+      "banking77_val_unseen_acc": 0.24489795918367346,
+      "clinc_val_seen_acc": 0.556,
+      "clinc_in_scope_acc": 0.5655314757481941,
+      "clinc_oos_recall": 0.25806451612903225,
+      "clinc_val_unseen_acc": 0.23,
+      "snli_val_seen_acc": 0.472,
+      "snli_val_unseen_acc": null
+    }
+  ],
+  "temperatures": {
+    "banking77": 0.9102954531446772,
+    "clinc": 1.0237747324710975,
+    "snli": 2.9471531525734274
+  },
+  "held_out": {
+    "banking77": [
+      "automatic_top_up",
+      "beneficiary_not_allowed",
+      "card_payment_not_recognised",
+      "declined_cash_withdrawal",
+      "exchange_rate",
+      "failed_transfer",
+      "get_disposable_virtual_card",
+      "passcode_forgotten",
+      "pending_transfer",
+      "receiving_money",
+      "reverted_card_payment?",
+      "top_up_reverted",
+      "topping_up_by_card",
+      "transfer_fee_charged",
+      "transfer_into_account"
+    ],
+    "clinc": [
+      "book_hotel",
+      "calendar",
+      "card_declined",
+      "change_user_name",
+      "change_volume",
+      "direct_deposit",
+      "distance",
+      "expiration_date",
+      "freeze_account",
+      "ingredient_substitution",
+      "lost_luggage",
+      "maybe",
+      "min_payment",
+      "mpg",
+      "nutrition_info",
+      "oil_change_how",
+      "oil_change_when",
+      "order_checks",
+      "payday",
+      "pto_used",
+      "report_fraud",
+      "restaurant_suggestion",
+      "routing",
+      "thank_you",
+      "timer",
+      "tire_change",
+      "transactions",
+      "transfer",
+      "user_name",
+      "w2"
+    ],
+    "snli": []
+  },
+  "final": {
+    "banking77|test_seen|single order": {
+      "acc": 0.4907258064516129,
+      "brier": 0.6326336997945131,
+      "nll": 1.6679097195993533,
+      "ece": 0.06867215081770164
+    },
+    "banking77|test_seen|4 orders": {
+      "acc": 0.494758064516129,
+      "brier": 0.6256841055297282,
+      "nll": 1.6492644783543404,
+      "ece": 0.08428738387312576
+    },
+    "banking77|test_seen|4 orders + T": {
+      "acc": 0.49516129032258066,
+      "brier": 0.620057253563364,
+      "nll": 1.6338366906913808,
+      "ece": 0.06429194119065948
+    },
+    "banking77|test_unseen|single order": {
+      "acc": 0.17,
+      "brier": 0.9656616667363402,
+      "nll": 3.690486925527657,
+      "ece": 0.14962085707035414
+    },
+    "banking77|test_unseen|4 orders": {
+      "acc": 0.185,
+      "brier": 0.9501330010397463,
+      "nll": 3.6112662336830046,
+      "ece": 0.11515816860135238
+    },
+    "banking77|test_unseen|4 orders + T": {
+      "acc": 0.18333333333333332,
+      "brier": 0.9613445270233527,
+      "nll": 3.7408010504322267,
+      "ece": 0.14087791815161657
+    },
+    "clinc|test_seen|single order": {
+      "acc": 0.46630434782608693,
+      "brier": 0.6709981129025417,
+      "nll": 2.5198520686616086,
+      "ece": 0.021266212865846533
+    },
+    "clinc|test_seen|4 orders": {
+      "acc": 0.48586956521739133,
+      "brier": 0.6547284178630106,
+      "nll": 2.428653418510485,
+      "ece": 0.03497276673958051
+    },
+    "clinc|test_seen|4 orders + T": {
+      "acc": 0.4860869565217391,
+      "brier": 0.6551806839966833,
+      "nll": 2.4218780210208144,
+      "ece": 0.0397967524377317
+    },
+    "clinc|oos_split|4 orders + T": {
+      "in_scope_acc": 0.5808333333333333,
+      "oos_recall": 0.145,
+      "oos_precision": 0.6971153846153846,
+      "in_scope_flagged_oos": 0.0175,
+      "oos_share": 0.21739130434782608
+    },
+    "clinc|test_unseen|single order": {
+      "acc": 0.2777777777777778,
+      "brier": 0.9289318505005733,
+      "nll": 3.570325629119729,
+      "ece": 0.15399874512238662
+    },
+    "clinc|test_unseen|4 orders": {
+      "acc": 0.2788888888888889,
+      "brier": 0.9078194476227418,
+      "nll": 3.493523783240511,
+      "ece": 0.11702301921746396
+    },
+    "clinc|test_unseen|4 orders + T": {
+      "acc": 0.28,
+      "brier": 0.9050913482536107,
+      "nll": 3.4708553899159296,
+      "ece": 0.11153570106375946
+    },
+    "snli|test_seen|single order": {
+      "acc": 0.47221091205211724,
+      "brier": 0.7007791921364931,
+      "nll": 1.223436186801782,
+      "ece": 0.1966325446848292
+    },
+    "snli|test_seen|4 orders": {
+      "acc": 0.4714983713355049,
+      "brier": 0.6983536178149894,
+      "nll": 1.2165401659683572,
+      "ece": 0.19591014866397033
+    },
+    "snli|test_seen|4 orders + T": {
+      "acc": 0.47129478827361565,
+      "brier": 0.6249844429986796,
+      "nll": 1.03792024489039,
+      "ece": 0.013003180048217605
+    }
+  }
+}

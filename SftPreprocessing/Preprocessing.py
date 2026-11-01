@@ -15,9 +15,9 @@ DATASETS = {
     "snli": {
         "task": "natural_language_inference",
         "files": {
-            "train": "Data/snli_train.csv",
-            "validation": "Data/snli_validation.csv",
-            "test": "Data/snli_test.csv",
+            "train": "Data/SNLI/snli_train.csv",
+            "validation": "Data/SNLI/snli_validation.csv",
+            "test": "Data/SNLI/snli_test.csv",
         },
     },
     "banking77": {
