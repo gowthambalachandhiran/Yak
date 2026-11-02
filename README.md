@@ -247,4 +247,4 @@ To be decided before the first public release.
 
 ## Acknowledgments
 
-Yak is inspired by JEV, and builds on public datasets including WikiText-103, Banking77, CLINC and SNLI. Thanks to everyone who made those resources available.
+Yak is inspired by JEV, and builds on public datasets including WikiText-103, Banking77, CLINC and SNLI. Thanks to everyone who made those resources available. We thank all who 
