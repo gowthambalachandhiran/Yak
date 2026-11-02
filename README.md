@@ -169,9 +169,7 @@ A confident correct prediction scores 0, the best possible value, and a confiden
 
 ## Week 5: Evaluation (planned)
 
-For every task we report accuracy and macro F1, plus calibration: Brier score, expected calibration error and a reliability diagram. A temperature fitted on validation data is applied to the logits, and we report calibration before and after. For CLINC we also report out-of-scope handling separately.
-
-Because the Brier score is both the RLCD reward and a headline metric, we also report log loss and expected calibration error, which the training does not target directly. All tuning uses validation data only, and the test splits stay untouched until the final evaluation.
+Benchmark on a generic dataset to check how it performs. This will be unseed data . The hypothesis is that the model with its language understanding should perform well. We will check if that hold well.
 
 ## Repository layout
 
