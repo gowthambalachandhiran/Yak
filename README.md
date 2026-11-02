@@ -10,10 +10,11 @@ The name comes from the yak, an animal that is small enough to look unassuming a
 |-------|-------|
 | Tokenizer | Done |
 | MLM pretraining | Done. A pretrained checkpoint exists (results below). |
-| Dataset download for fine-tuning | Done. One script fetches all three datasets. |
-| Supervised fine-tuning | Next. The plan is below. |
-| Evaluation (accuracy, Brier score, calibration) | After fine-tuning |
-| RLCD (Reinforcement Learning for Calibrated Decisions) with a Brier score reward | After supervised fine-tuning. The plan is below. |
+| Dataset download for fine-tuning | Done. Banking77 and CLINC come from a script, SNLI from a notebook. |
+| Preprocessing | Done. One script writes the train, validation and test files for all three datasets. |
+| Supervised fine-tuning | First experiment done: one model trained on a mixture of the three datasets for 6 epochs. Results below. Baselines and repeat runs are still to do. |
+| RLCD (Reinforcement Learning for Calibrated Decisions) with a Brier score reward | Next. The calibration numbers from fine-tuning are the baseline to beat. |
+| Final evaluation (accuracy, Brier score, calibration) | After RLCD |
 
 This README is updated as each stage lands. Sections marked "planned" describe what we intend to build, not what exists today.
 
@@ -26,7 +27,7 @@ The pipeline has six pieces:
 1. A byte pair encoding (BPE) tokenizer implemented from scratch, with no tokenizer libraries doing the heavy lifting.
 2. A pretraining corpus. We used WikiText-103, a cleaned Wikipedia dump. Adding BookCorpus is still possible later.
 3. An MLM pretraining run using our own tokenizer.
-4. Supervised fine-tuning for classification on Banking77, CLINC and SNLI.
+4. Supervised fine-tuning on Banking77, CLINC and SNLI, in which the model reads the candidate label names next to the text.
 5. RLCD, which trains the fine-tuned model to give calibrated probabilities, using the Brier score as the reward.
 6. Evaluation with accuracy, Brier score and calibration measures.
 
@@ -72,42 +73,76 @@ Checkpoints are not stored in the repository because of their size. They are kep
 |------|-------|------------|-------------|
 | 1 | Tokenizer (done) | Implement byte pair encoding from scratch, train it with a 30,000 vocabulary, and add special tokens for padding, unknown, classification, separation and masking. | Standalone BPE module, trained tokenizer file (`Tokenizer/TokenFile/bpe.json`), and token statistics |
 | 2 | MLM pretraining (done) | Pretrain the 4 layer model with a masked language modeling objective on sequences packed to a 2,048 token context. | Pretrained Yak checkpoint and training logs |
-| 3 | Supervised fine-tuning (next) | Download Banking77, CLINC and SNLI, adapt the text to the tokenizer, and fine-tune the pretrained encoder for classification. Details below. | Fine-tuned checkpoints, training configuration, and baselines |
+| 3 | Supervised fine-tuning (first experiment done) | Download Banking77, CLINC and SNLI, adapt the text to the tokenizer, and fine-tune the pretrained encoder on all three at once. Details and results below. | Fine-tuning notebook, preprocessing script, and results (`runs/mixture/results.json`) |
 | 4 | RLCD (planned) | Train the fine-tuned models with Reinforcement Learning for Calibrated Decisions, using the Brier score as the reward, so that their probabilities can be trusted. Details below. | Calibrated checkpoints and training configuration |
 | 5 | Evaluation | Measure accuracy, Brier score and calibration on each task, and compare against baselines. | Evaluation report and reproduction scripts |
 
-## Week 3: Supervised fine-tuning (planned)
+## Week 3: Supervised fine-tuning
 
-**Datasets.** Three classification datasets, downloaded by one script (see Getting started).
+### Datasets and preparation
 
 | Dataset | Task | Labels | Splits |
 |---------|------|--------|--------|
 | Banking77 | Banking intents | 77 | train 10,003, test 3,080 (no validation split) |
 | CLINC | 150 intents plus out-of-scope | 151 | train 15,100, validation 3,100, test 5,500 |
-| SNLI | Sentence pair inference | 3 | train 549,367, validation 9,842, test 9,824 (published sizes) |
+| SNLI | Sentence pair inference | 3 | train 549,367, validation 9,842, test 9,824 (pairs with no gold label are dropped) |
 
-The largest label space is CLINC with 151 labels, so the output layer has `max_label = 151` outputs. For CLINC the out-of-scope class is the last label, id 150. Banking77 has no validation split, so we create one from its training set with a fixed seed.
+The preprocessing script, `SftPreprocessing/Preprocessing.py`, turns the three datasets into one set of files in `Data/processed/`. Each line of `train.jsonl`, `validation.jsonl` and `test.jsonl` is one example: the text (or the premise and hypothesis) and the label as a readable name such as `card_arrival`, never a number. Banking77 has no validation split, so 10 percent of its training data is set aside with a fixed seed. The training set is balanced to the smallest dataset, which gives 9,003 examples from each dataset, 27,009 in total. Validation (13,942) and test (18,404) are left unbalanced. SNLI is not committed because of its size, so it is recreated from Hugging Face by `Data/snli.ipynb`.
 
-**Matching the text to the tokenizer.** The tokenizer was trained on WikiText, where punctuation is separated from words by spaces and text keeps its case. Downstream text such as `card?` would otherwise be split into odd pieces or `[UNK]`. We apply the same spacing before tokenizing and measure the `[UNK]` rate on each dataset before training anything.
+Text is normalised the way WikiText was before it reaches the tokenizer: punctuation is split off from words and apostrophes are spaced, so downstream text looks like the text the model was pretrained on.
 
-**Inputs.** A single text becomes `[CLS] text [SEP]`. An SNLI pair becomes `[CLS] premise [SEP] hypothesis [SEP]`. Inputs are truncated (about 128 tokens is enough for these datasets) and padded dynamically. The model has no segment embeddings, so SNLI is expected to be the hardest task.
+### How the model classifies
 
-**Model.** The pretrained encoder with the masked language modeling head removed, a pooling step, and a linear output layer with 151 outputs. We use mean pooling over real tokens by default, because `[CLS]` was never trained to summarise a sentence during MLM, and we compare it against `[CLS]` pooling. Dropout is switched back on for fine-tuning, because these datasets are small.
+The model does not have one output per class. The candidate label names go into the input instead:
 
-**Labels across tasks.** Each task only uses its own number of outputs. The extra outputs are cut off before the softmax, so they take no probability and the Brier score is computed over real classes only. A separate label-mixing module maps each dataset's labels into the shared outputs, so the model can be trained on a mix of tasks. It supports two ways of doing this, which we will compare:
+```
+[CLS] text [SEP] label1 [SEP] label2 [SEP] ... [SEP]
+```
 
-- **Shared rows:** every task uses outputs 0 to K-1 of the same layer.
-- **Disjoint rows:** each task gets its own non-overlapping range of outputs, 233 in total for the three datasets plus any future ones.
+The encoder reads the text and the labels together. One shared linear scorer, which adds only 129 new parameters, scores the first token of each label, and a softmax over those scores gives the probabilities. This replaces the MLM output layer, so the whole model is about 4.63M parameters.
 
-**Baselines.** Three checks before trusting any fine-tuning result: a linear classifier on the frozen encoder, the same architecture trained from random weights, and a TF-IDF with logistic regression model. We also confirm the model can overfit one small batch.
+- **Labels are re-drawn every time.** During training an example shows either all of its dataset's labels or a random subset, and the order is reshuffled each time the example is used, so the model cannot learn that a label sits in a particular position. Labels never cross from one dataset to another.
+- **Evaluation can average several label orders.** The results below use 4.
+- **Unseen labels can be scored.** Because the model reads the label words, a label it never saw in training can still be a candidate. The largest number of candidates in one example is 151 (CLINC), which is where `max_label = 151` comes from.
 
-**Training.** AdamW with warm-up and linear decay, 3 to 5 epochs, batches of 32 to 64, early stopping on validation accuracy, and 3 seeds per setting. Learning rates around 1e-4 to 3e-4 are the starting point, higher than usual for larger models because this one is small. These values will be tuned and then recorded here.
+### Held-out classes
 
-**Done when:**
-- Each dataset has a fine-tuned checkpoint that beats the from-scratch and TF-IDF baselines on validation data.
-- Results are reported as mean and spread over seeds, on the official test splits.
-- The fine-tuning configuration, label mapping and tokenizer file are saved with each checkpoint.
-- A mixed-task run has been compared with the single-task runs.
+To check that labels are read and not just memorised, 15 of the 77 Banking77 classes and 30 of the 151 CLINC classes are held out of training. Neither their examples nor their names appear. They are scored afterwards, with all classes as candidates. SNLI has only 3 labels and nothing is held out.
+
+### Training
+
+The notebook is `Model/OurExperiments/FineTuning/Yak_Finetune_Mixture.ipynb`, with helper code in the `Utils/` folder next to it. It starts from the pretrained checkpoint and trains on all three datasets at once. Every batch comes from one dataset, picked at random with equal weights. Batch sizes are 32 for Banking77, 16 for CLINC (its inputs are longer because of the 151 labels) and 64 for SNLI. Training ran for 6 epochs of 1,000 steps each, with a learning rate of 2e-4, and the best epoch was chosen by mean validation accuracy on the seen classes. An epoch took about 15 minutes on a local machine.
+
+### Results
+
+Test split, averaging 4 label orders, with a temperature fitted on validation data. Chance is 1 divided by the number of classes. A model that guessed uniformly would have a Brier score of 0.987 on Banking77, 0.993 on CLINC and 0.667 on SNLI. ECE is expected calibration error. Lower is better for both Brier and ECE.
+
+| Test set | Accuracy | Chance | Brier | ECE |
+|----------|----------|--------|-------|-----|
+| Banking77, classes seen in training | 49.5% | 1.3% | 0.620 | 0.064 |
+| Banking77, held-out classes | 18.3% | 1.3% | 0.961 | 0.141 |
+| CLINC, classes seen in training | 48.6% | 0.7% | 0.655 | 0.040 |
+| CLINC, held-out classes | 28.0% | 0.7% | 0.905 | 0.112 |
+| SNLI | 47.1% | 33.3% | 0.625 | 0.013 |
+
+On CLINC, in-scope accuracy is 58.1%. The out-of-scope class has a recall of 14.5% and a precision of 69.7%, and 1.8% of in-scope examples are wrongly flagged as out-of-scope. The fitted temperatures are 0.91 for Banking77, 1.02 for CLINC and 2.95 for SNLI.
+
+What these numbers say:
+
+- **Labels are being read.** On classes it never saw in training, the model scores 18.3% on Banking77 and 28.0% on CLINC, about 14 and 40 times chance. That is far below its accuracy on seen classes, but it is not memorisation.
+- **SNLI is the weakest task.** 47.1% is only 14 points above chance. The model has no segment embeddings and was pretrained on single text, so pairs are hard for it.
+- **Temperature matters most on SNLI.** Its raw probabilities were badly over-confident (a temperature of 2.95). Scaling brings its ECE from 0.196 down to 0.013 and its Brier score from 0.698 to 0.625.
+- **Out-of-scope detection is poor.** The model rarely says "out of scope" (recall 14.5%).
+- **Training was not run to convergence.** Validation accuracy was still rising slowly at epoch 6.
+
+### Still to do in this stage
+
+- The baselines planned for this stage: a model with the same architecture trained from random weights, and a TF-IDF with logistic regression model.
+- Repeat runs with 3 seeds, so results can be reported as mean and spread.
+- Longer training, since accuracy was still improving.
+- A comparison against single-dataset runs.
+
+These calibration numbers are the starting point for RLCD.
 
 ## Week 4: RLCD with a Brier score reward (planned)
 
@@ -122,8 +157,8 @@ Brier = sum over classes k of (p_k - y_k)^2        y_k is 1 for the true class, 
 A confident correct prediction scores 0, the best possible value, and a confident wrong one scores 2, the worst. The Brier score is a strictly proper scoring rule, so the model earns the highest expected reward by reporting what it truly believes. It is penalised both for confident mistakes and for being unsure about answers it gets right.
 
 **Plan.**
-- Start from the supervised checkpoints, so RLCD only has to improve calibration and does not have to learn the task.
-- Probabilities are computed over a task's real classes only, using the same label handling as in fine-tuning.
+- Start from the supervised checkpoint from Week 3, so RLCD only has to improve calibration and does not have to learn the task. The Week 3 results are the baseline to beat.
+- Probabilities are the softmax over the candidate labels shown for an example, mapped back to classes, exactly as in fine-tuning.
 - The reward is a smooth function of the predicted probabilities. We first optimise it directly, which is equivalent to training on the Brier loss, and add sampling-based reinforcement learning only if we need the model to sample its decisions.
 - Track accuracy next to the reward. If accuracy falls noticeably, we stop or lower the learning rate. The tolerance is set before the run.
 - Compare against cheap calibration baselines, namely temperature scaling and label smoothing. RLCD has to beat them to justify itself.
@@ -143,47 +178,55 @@ Because the Brier score is both the RLCD reward and a headline metric, we also r
 
 ```
 Data/
-  DownloadData.py     the one script to run; downloads and prepares the datasets
-  BaseDataset.py      shared logic for dataset classes
-  Banking77.py        Banking77 dataset class
-  Clinc.py            CLINC dataset class
-  Snli.py             SNLI dataset class
-  FileUtils.py        download and file helpers
-Model/                transformer layers, encoder block and the MLM model
-Tokenizer/            BPE implementation and the trained tokenizer file
-Finetune/             (planned) classification model, label mixing, supervised fine-tuning and RLCD
-Eval/                 (planned) Brier score, calibration and benchmark evaluation
+  DownloadData.py       downloads and prepares Banking77 and CLINC (and SNLI from Stanford's site)
+  BaseData.py, Banking77.py, Clinic.py, Snli.py, FileUtils.py    the classes and helpers it uses
+  snli.ipynb            downloads SNLI from Hugging Face and writes the SNLI csv files
+  banking77/, clinc/    the prepared datasets
+  processed/            train.jsonl, validation.jsonl, test.jsonl and label_metadata.json
+SftPreprocessing/
+  Preprocessing.py      builds Data/processed/ from the three datasets
+Model/
+  MlmModel.py, EncoderBlock.py, LayerOne/, LayerTwo/, LayerThree/    the transformer
+  OurExperiments/
+    Pretraining/        the pretraining notebooks
+    FineTuning/         the fine-tuning notebook and Utils/ (tokenizer wrapper, dataset mixing, metrics, inference)
+Tokenizer/              BPE implementation and the trained tokenizer file
+runs/mixture/           results.json from the first fine-tuning run
+Eval/                   (planned) Brier score, calibration and benchmark evaluation
 README.md
 ```
 
-Downloaded datasets are written next to the scripts in `Data/` (as `banking77/`, `clinc/`, `snli/`, `_raw/` and `manifest.json`) and are excluded by `.gitignore`. Only the Python files in `Data/` are tracked. Model checkpoints (`*.pt`, `*.ckpt`) and tokenized caches (`*.npy`) are excluded as well.
+Banking77, CLINC and the processed files are small and are kept in the repository. SNLI is not, because it has about 550,000 training pairs: recreate it with `Data/snli.ipynb`. Model checkpoints (`*.pt`) are too large for the repository and are kept in cloud storage.
 
 ## Getting started
 
-### Download the fine-tuning datasets
+### Prepare the fine-tuning data
 
-The script uses only the Python standard library. From the repository root:
-
-```
-python Data/DownloadData.py
-```
-
-On Windows use `python`, not `python3`. Useful options:
+Run these from the repository root, in this order. On Windows use `python`, not `python3`.
 
 ```
-python Data/DownloadData.py --only banking77 clinc   # a subset
-python Data/DownloadData.py --force                  # redo everything
-python Data/DownloadData.py --out <folder>           # write somewhere else
-python Data/DownloadData.py --delete-raw             # remove the downloaded source files at the end
+python Data/DownloadData.py --only banking77 clinc
 ```
 
-Each dataset is written as `train.jsonl`, `validation.jsonl` (where it exists) and `test.jsonl`, plus a `labels.json`. The script ends by printing the largest label space, which should read `max_label = 151`. A re-run skips datasets that are already prepared.
+This writes `Data/banking77/` and `Data/clinc/`. Useful options are `--force` to redo everything, `--out <folder>` to write somewhere else, and `--delete-raw` to remove the downloaded source files at the end. If a download fails with a certificate error, which can happen behind a company proxy or antivirus that inspects HTTPS, try `pip install --upgrade certifi` or pass `--cafile` with your organisation's certificate bundle. `--insecure` turns certificate checking off and is a last resort.
 
-If the download fails with a certificate error, which can happen behind a company proxy or antivirus that inspects HTTPS, try `pip install --upgrade certifi`, or pass `--cafile` with your organisation's certificate bundle. `--insecure` turns certificate checking off and should be a last resort. If a server cannot be reached, download the file in a browser and save it into `Data/_raw/` under the name shown in the error message. The script then uses it.
+Then SNLI. Run `Data/snli.ipynb` once (it needs the `datasets` package). It writes `Data/snli_train.csv`, `Data/snli_validation.csv` and `Data/snli_test.csv`. These files are large and stay on your machine. `python Data/DownloadData.py --only snli` fetches it from Stanford's site instead, but that server is not reachable from every network.
+
+Finally, build the training files:
+
+```
+python SftPreprocessing/Preprocessing.py
+```
+
+This writes `train.jsonl`, `validation.jsonl`, `test.jsonl` and `label_metadata.json` into `Data/processed/`. A correct run reports 27,009 training, 13,942 validation and 18,404 test records, and a maximum of 151 labels. The result is deterministic, since the script uses a fixed seed. If any of the three `.jsonl` files is missing from your checkout, this script is what creates it. The fine-tuning notebook stops with an error if one of them is absent.
+
+### Fine-tune
+
+Open `Model/OurExperiments/FineTuning/Yak_Finetune_Mixture.ipynb`, point `CKPT` at the pretrained checkpoint, and run it from anywhere inside the repository. Results are written to `runs/mixture/`.
 
 ### Other setup
 
-Setup instructions for pretraining and fine-tuning will be added as those modules land. The plan is for everything to be runnable from a clean checkout with a single environment file and a handful of documented commands.
+Setup instructions for pretraining will be added as that code is cleaned up. The plan is for everything to be runnable from a clean checkout with a single environment file and a handful of documented commands.
 
 ## Contributing
 
