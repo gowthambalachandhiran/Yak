@@ -137,10 +137,9 @@ What these numbers say:
 
 ### Still to do in this stage
 
-- The baselines planned for this stage: a model with the same architecture trained from random weights, and a TF-IDF with logistic regression model.
-- Repeat runs with 3 seeds, so results can be reported as mean and spread.
-- Longer training, since accuracy was still improving.
-- A comparison against single-dataset runs.
+- More Training since we see the accuracy imporbing with free encoder for at least 3 epochs.
+- Perform RLCD with Brier score
+- Benchmark with a generic dataset to check the generalizability.
 
 These calibration numbers are the starting point for RLCD.
 
