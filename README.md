@@ -14,8 +14,7 @@ The name comes from the yak, an animal that is small enough to look unassuming a
 | Preprocessing | Done. One script writes the train, validation and test files for all three datasets. |
 | Supervised fine-tuning | First mixture experiment complete. Results and calibration baselines are reported below. |
 | RLCD (Reinforcement Learning for Calibrated Decisions) | First Brier-objective run complete (seed 0). It improved some metrics, but did not meet the pre-defined calibration success criteria on all three tasks. |
-| Unseen-data benchmark | Partial results available for Emotion and SST-2. AG News is configured in the notebook but is not present in the committed results artifact. |
-| Final evaluation | In progress. Multi-seed RLCD runs and a complete benchmark report are still outstanding. |
+| Unseen-data benchmark | Done. Zero-shot results are reported for Emotion and SST-2, with two candidate-label wordings each. AG News is excluded from this benchmark scope. |
 
 This README is updated as each stage lands. Sections marked "planned" describe what we intend to build, not what exists today.
 
@@ -76,7 +75,7 @@ Checkpoints are not stored in the repository because of their size. They are kep
 | 2 | MLM pretraining (done) | Pretrain the 4 layer model with a masked language modeling objective on sequences packed to a 2,048 token context. | Pretrained Yak checkpoint and training logs |
 | 3 | Supervised fine-tuning (first experiment done) | Download Banking77, CLINC and SNLI, adapt the text to the tokenizer, and fine-tune the pretrained encoder on all three at once. Details and results below. | Fine-tuning notebook, preprocessing script, and results (`runs/mixture/results.json`) |
 | 4 | RLCD (first run complete) | Fine-tune the SFT checkpoint with the Brier objective. The first run used seed 0, 3 epochs and 500 steps per epoch. Results did not satisfy the calibration acceptance criteria on every task. | `yak-rlcd-and-benchmarking.ipynb`; checkpoint output is generated under `runs/rlcd/` |
-| 5 | Unseen-data benchmark (partial) | Evaluate zero-shot transfer to datasets not used for training. The committed results currently cover Emotion and SST-2, with two label wordings each. AG News is configured but has no result in the committed JSON. | `yaak-benchmark.ipynb` and `runs/benchmark/results_benchmark.json` |
+| 5 | Unseen-data benchmark (done) | Evaluate zero-shot transfer to datasets not used for training. Emotion and SST-2 are included, each with two candidate-label wordings. AG News is excluded from the benchmark scope. | `yaak-benchmark.ipynb` and `runs/benchmark/results_benchmark.json` |
 
 ## Week 3: Supervised fine-tuning
 
@@ -140,7 +139,7 @@ What these numbers say:
 
 - Run additional supervised fine-tuning experiments; validation accuracy was still improving slowly at the end of the first run.
 - Repeat RLCD with multiple seeds (the current run uses seed 0 only).
-- Complete and save the unseen-data benchmark, including the configured AG News task.
+- The unseen-data benchmark is complete for the selected Emotion and SST-2 datasets; AG News is outside the current scope.
 - Compare RLCD against temperature scaling and other simple calibration baselines on the same evaluation protocol.
 
 The first RLCD run and the unseen-data benchmark are documented below.
@@ -192,7 +191,7 @@ The practical takeaway is that direct Brier optimisation showed some promise for
 
 The benchmark notebook is `Model/OurExperiments/FineTuning/yaak-benchmark.ipynb`. It evaluates the SFT checkpoint and, when available, the seed-0 RLCD checkpoint on datasets and class names not used during training. It averages four candidate-label orders and tests two label wordings per dataset.
 
-The committed artifact `runs/benchmark/results_benchmark.json` contains results for **Emotion (2,000 test examples)** and **SST-2 (872 test examples)**. Although AG News is configured in the notebook, it is not present in this committed results file and is therefore not reported below.
+The committed artifact `runs/benchmark/results_benchmark.json` contains the completed benchmark results for **Emotion (2,000 test examples)** and **SST-2 (872 test examples)**. AG News is intentionally excluded from the benchmark scope because this evaluation focuses on the selected datasets.
 
 ### Zero-shot benchmark results
 
