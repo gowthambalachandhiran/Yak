@@ -31,6 +31,74 @@ The pipeline has six pieces:
 5. RLCD, which trains the fine-tuned model to give calibrated probabilities, using the Brier score as the reward.
 6. Evaluation with accuracy, Brier score and calibration measures.
 
+## Model architecture
+
+Yak uses a compact, **encoder-only Transformer**. The same encoder is first pretrained with masked language modelling (MLM), then adapted for classification by replacing the MLM output head with a small candidate-label scoring head.
+
+### End-to-end training flow
+
+```mermaid
+flowchart TD
+    A["WikiText-103 corpus"] --> B["Custom BPE tokenizer"]
+    B --> C["Token IDs + [MASK] positions"]
+    C --> D["Token embeddings + fixed sinusoidal positions"]
+    D --> E["4 × Transformer encoder blocks"]
+    E --> F["Final LayerNorm"]
+    F --> G["Tied vocabulary projection"]
+    G --> H["MLM loss: predict masked tokens"]
+    H --> I["Pretrained encoder checkpoint"]
+    I --> J["Classification input: text + candidate label names"]
+    J --> K["Same Transformer encoder"]
+    K --> L["Shared linear scorer on each candidate label's first-token representation"]
+    L --> M["Softmax across candidate labels"]
+    M --> N["Predicted label + probabilities"]
+    N --> O["Optional RLCD fine-tuning with Brier-score objective"]
+```
+
+### Inside one Transformer encoder block
+
+```mermaid
+flowchart TD
+    A["Input hidden states (B, L, 128)"] --> B["LayerNorm"]
+    B --> C["Bidirectional multi-head self-attention"]
+    C --> D["Residual addition"]
+    A --> D
+    D --> E["LayerNorm"]
+    E --> F["Feed-forward network: 128 → 512 → 128, GELU"]
+    F --> G["Residual addition"]
+    D --> G
+    G --> H["Output hidden states (B, L, 128)"]
+```
+
+There are four such blocks stacked sequentially. Each attention layer uses four heads (32 dimensions per head), and attention is bidirectional: each token can use context from tokens on either side. The implementation uses scaled dot-product attention and applies a padding mask when needed.
+
+### How classification works
+
+Unlike a conventional classifier with a fixed output neuron for every class, Yak places the candidate label names in the input sequence. For example:
+
+```text
+[CLS] I need help with my card [SEP]
+card_arrival [SEP] cash_withdrawal [SEP] cash_withdrawal_charge [SEP] ...
+```
+
+The encoder produces one contextual representation per token. The first token of each candidate label is passed through the **same shared linear scoring layer** (128 inputs → 1 score). A softmax over candidate scores produces the probability distribution across the labels supplied for that example.
+
+This means the output layer is not tied to a fixed number of classes: candidate labels are represented as text, and labels not seen during fine-tuning can still be supplied at inference time. The scorer adds 129 parameters (128 weights and one bias). During training, candidate-label subsets and their order are varied so the model does not depend on a fixed label position.
+
+### Main dimensions
+
+| Component | Configuration |
+|---|---|
+| Token embedding | 30,005 × 128 |
+| Positional information | Fixed sinusoidal, length 2,048 |
+| Transformer encoder | 4 blocks |
+| Attention per block | 4 bidirectional heads, 32 dimensions per head |
+| Feed-forward network | 128 → 512 → 128, GELU |
+| Classification scorer | Shared Linear(128, 1) |
+| Classification probabilities | Softmax over the candidate labels in the input |
+
+**Two output heads, one shared encoder:** during MLM pretraining, the encoder feeds a vocabulary projection whose weights are tied to the token embedding matrix. For classification fine-tuning, that vocabulary projection is replaced by the shared candidate-label scorer. RLCD starts from the SFT classifier and optimises the Brier-score objective; it does not introduce a separate encoder architecture.
+
 ## Model configuration
 
 This is the configuration of the pretrained checkpoint.
