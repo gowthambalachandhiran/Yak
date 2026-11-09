@@ -12,9 +12,10 @@ The name comes from the yak, an animal that is small enough to look unassuming a
 | MLM pretraining | Done. A pretrained checkpoint exists (results below). |
 | Dataset download for fine-tuning | Done. Banking77 and CLINC come from a script, SNLI from a notebook. |
 | Preprocessing | Done. One script writes the train, validation and test files for all three datasets. |
-| Supervised fine-tuning | First experiment done: one model trained on a mixture of the three datasets for 6 epochs. Results below. Baselines and repeat runs are still to do. |
-| RLCD (Reinforcement Learning for Calibrated Decisions) with a Brier score reward | Next. The calibration numbers from fine-tuning are the baseline to beat. |
-| Final evaluation (accuracy, Brier score, calibration) | After RLCD |
+| Supervised fine-tuning | First mixture experiment complete. Results and calibration baselines are reported below. |
+| RLCD (Reinforcement Learning for Calibrated Decisions) | First Brier-objective run complete (seed 0). It improved some metrics, but did not meet the pre-defined calibration success criteria on all three tasks. |
+| Unseen-data benchmark | Partial results available for Emotion and SST-2. AG News is configured in the notebook but is not present in the committed results artifact. |
+| Final evaluation | In progress. Multi-seed RLCD runs and a complete benchmark report are still outstanding. |
 
 This README is updated as each stage lands. Sections marked "planned" describe what we intend to build, not what exists today.
 
@@ -74,8 +75,8 @@ Checkpoints are not stored in the repository because of their size. They are kep
 | 1 | Tokenizer (done) | Implement byte pair encoding from scratch, train it with a 30,000 vocabulary, and add special tokens for padding, unknown, classification, separation and masking. | Standalone BPE module, trained tokenizer file (`Tokenizer/TokenFile/bpe.json`), and token statistics |
 | 2 | MLM pretraining (done) | Pretrain the 4 layer model with a masked language modeling objective on sequences packed to a 2,048 token context. | Pretrained Yak checkpoint and training logs |
 | 3 | Supervised fine-tuning (first experiment done) | Download Banking77, CLINC and SNLI, adapt the text to the tokenizer, and fine-tune the pretrained encoder on all three at once. Details and results below. | Fine-tuning notebook, preprocessing script, and results (`runs/mixture/results.json`) |
-| 4 | RLCD (planned) | Train the fine-tuned models with Reinforcement Learning for Calibrated Decisions, using the Brier score as the reward, so that their probabilities can be trusted. Details below. | Calibrated checkpoints and training configuration |
-| 5 | Evaluation | Measure accuracy, Brier score and calibration on each task, and compare against baselines. | Evaluation report and reproduction scripts |
+| 4 | RLCD (first run complete) | Fine-tune the SFT checkpoint with the Brier objective. The first run used seed 0, 3 epochs and 500 steps per epoch. Results did not satisfy the calibration acceptance criteria on every task. | `yak-rlcd-and-benchmarking.ipynb`; checkpoint output is generated under `runs/rlcd/` |
+| 5 | Unseen-data benchmark (partial) | Evaluate zero-shot transfer to datasets not used for training. The committed results currently cover Emotion and SST-2, with two label wordings each. AG News is configured but has no result in the committed JSON. | `yaak-benchmark.ipynb` and `runs/benchmark/results_benchmark.json` |
 
 ## Week 3: Supervised fine-tuning
 
@@ -135,41 +136,82 @@ What these numbers say:
 - **Out-of-scope detection is poor.** The model rarely says "out of scope" (recall 14.5%).
 - **Training was not run to convergence.** Validation accuracy was still rising slowly at epoch 6.
 
-### Still to do in this stage
+### Remaining work
 
-- More Training since we see the accuracy imporbing with free encoder for at least 3 epochs.
-- Perform RLCD with Brier score
-- Benchmark with a generic dataset to check the generalizability.
+- Run additional supervised fine-tuning experiments; validation accuracy was still improving slowly at the end of the first run.
+- Repeat RLCD with multiple seeds (the current run uses seed 0 only).
+- Complete and save the unseen-data benchmark, including the configured AG News task.
+- Compare RLCD against temperature scaling and other simple calibration baselines on the same evaluation protocol.
 
-These calibration numbers are the starting point for RLCD.
+The first RLCD run and the unseen-data benchmark are documented below.
 
-## Week 4: RLCD with a Brier score reward (planned)
+## Week 4: RLCD with a Brier score objective
 
-RLCD stands for Reinforcement Learning for Calibrated Decisions. The idea is that the model returns a decision together with calibrated probabilities, rather than generated text. It is unrelated to Reinforcement Learning from Contrastive Distillation, which shares the abbreviation.
-
-**Reward.** We start from each task's best supervised checkpoint. For every example the reward is the negative Brier score of the predicted class probabilities against the true label:
+The first RLCD experiment is implemented in `Model/OurExperiments/FineTuning/yak-rlcd-and-benchmarking.ipynb`. It starts from the supervised `best.pt` checkpoint and fine-tunes the model using the multiclass Brier score:
 
 ```
-Brier = sum over classes k of (p_k - y_k)^2        y_k is 1 for the true class, 0 for the others
+Brier = sum_k (p_k - y_k)^2
 ```
 
-A confident correct prediction scores 0, the best possible value, and a confident wrong one scores 2, the worst. The Brier score is a strictly proper scoring rule, so the model earns the highest expected reward by reporting what it truly believes. It is penalised both for confident mistakes and for being unsure about answers it gets right.
+Minimising Brier is equivalent to maximising its negative as a reward. It is a differentiable objective, so this implementation optimises it directly rather than sampling discrete actions. All model weights are trainable. The run uses the same three-task mixture, a low learning rate, and an accuracy guard: an epoch is eligible only if mean seen-class validation accuracy remains within 0.01 of the SFT baseline. Among eligible epochs, the checkpoint with the lowest mean validation Brier score is retained.
 
-**Plan.**
-- Start from the supervised checkpoint from Week 3, so RLCD only has to improve calibration and does not have to learn the task. The Week 3 results are the baseline to beat.
-- Probabilities are the softmax over the candidate labels shown for an example, mapped back to classes, exactly as in fine-tuning.
-- The reward is a smooth function of the predicted probabilities. We first optimise it directly, which is equivalent to training on the Brier loss, and add sampling-based reinforcement learning only if we need the model to sample its decisions.
-- Track accuracy next to the reward. If accuracy falls noticeably, we stop or lower the learning rate. The tolerance is set before the run.
-- Compare against cheap calibration baselines, namely temperature scaling and label smoothing. RLCD has to beat them to justify itself.
+**Run configuration:** seed 0; 3 epochs; 500 steps per epoch; learning rate 2e-5 for the encoder and 1e-4 for the scoring head; four label orders at test time. This is a single-seed experiment, not a final multi-seed result.
 
-**Done when:**
-- On each task, the test-set Brier score and expected calibration error are lower than for both the supervised checkpoint and its temperature-scaled version.
-- Accuracy stays within the agreed tolerance of the supervised checkpoint.
-- Results are reported as mean and spread over 3 seeds.
+### Test results: seen classes
 
-## Week 5: Evaluation (planned)
+The table compares the original SFT model, SFT with temperature fitted on validation data, RLCD, and RLCD with its own validation-fitted temperature. Accuracy is higher-is-better; Brier and ECE are lower-is-better.
 
-Benchmark on a generic dataset to check how it performs. This will be unseed data . The hypothesis is that the model with its language understanding should perform well. We will check if that hold well.
+| Dataset | Model | Accuracy | Brier | ECE |
+|---------|-------|----------|-------|-----|
+| Banking77 | SFT | 49.5% | 0.626 | 0.084 |
+| Banking77 | SFT + temperature | 49.5% | 0.620 | 0.064 |
+| Banking77 | RLCD | 50.6% | 0.616 | 0.083 |
+| Banking77 | RLCD + temperature | 50.5% | 0.611 | 0.062 |
+| CLINC | SFT | 48.6% | 0.655 | 0.035 |
+| CLINC | SFT + temperature | 48.6% | 0.655 | 0.040 |
+| CLINC | RLCD | 48.9% | 0.644 | 0.038 |
+| CLINC | RLCD + temperature | 48.8% | 0.644 | 0.042 |
+| SNLI | SFT | 47.1% | 0.698 | 0.196 |
+| SNLI | SFT + temperature | 47.1% | 0.625 | 0.013 |
+| SNLI | RLCD | 47.3% | 0.704 | 0.206 |
+| SNLI | RLCD + temperature | 47.3% | 0.624 | 0.013 |
+
+### Did RLCD improve the metrics?
+
+**Not consistently, and it did not pass the pre-defined success criteria.**
+
+- **Banking77:** RLCD improves accuracy from 49.5% to 50.6% and Brier from 0.626 to 0.616. ECE changes only from 0.084 to 0.083, and remains worse than the temperature-scaled SFT ECE of 0.064.
+- **CLINC:** RLCD improves accuracy from 48.6% to 48.9% and Brier from 0.655 to 0.644. ECE is 0.038, slightly worse than the raw SFT value of 0.035.
+- **SNLI:** RLCD increases accuracy slightly from 47.1% to 47.3%, but raw Brier and ECE become worse (0.704 and 0.206 versus 0.698 and 0.196 for SFT). Temperature scaling remains highly effective.
+
+The notebook's acceptance test requires RLCD's Brier and ECE to beat both SFT and temperature-scaled SFT while keeping accuracy within the agreed tolerance. The run reports **FAIL for Banking77, CLINC and SNLI**. This is the measured outcome, not a successful calibration claim.
+
+The practical takeaway is that direct Brier optimisation showed some promise for accuracy and Brier on two tasks, but did not reliably improve calibration over the simpler temperature-scaling baseline. The current experiment is exploratory: it uses one seed, so the results need repeat runs before drawing a strong conclusion.
+
+## Week 5: benchmark on unseen datasets
+
+The benchmark notebook is `Model/OurExperiments/FineTuning/yaak-benchmark.ipynb`. It evaluates the SFT checkpoint and, when available, the seed-0 RLCD checkpoint on datasets and class names not used during training. It averages four candidate-label orders and tests two label wordings per dataset.
+
+The committed artifact `runs/benchmark/results_benchmark.json` contains results for **Emotion (2,000 test examples)** and **SST-2 (872 test examples)**. Although AG News is configured in the notebook, it is not present in this committed results file and is therefore not reported below.
+
+### Zero-shot benchmark results
+
+No labelled examples from Emotion or SST-2 are used to train Yak. The TF-IDF + logistic-regression row is a supervised reference trained on 1,000 labelled examples; it is not a zero-shot baseline.
+
+| Dataset | Label wording | Model | Accuracy | Brier | ECE |
+|----------|---------------|-------|----------|-------|-----|
+| Emotion | plain | SFT | 14.95% | 0.929 | 0.199 |
+| Emotion | plain | RLCD reference | 13.70% | 0.937 | 0.215 |
+| Emotion | adjective | SFT | 17.90% | 0.845 | 0.127 |
+| Emotion | adjective | RLCD reference | 17.80% | 0.847 | 0.127 |
+| SST-2 | plain | SFT | 50.57% | 0.507 | 0.062 |
+| SST-2 | plain | RLCD reference | 50.00% | 0.508 | 0.059 |
+| SST-2 | good/bad | SFT | 46.67% | 0.539 | 0.140 |
+| SST-2 | good/bad | RLCD reference | 45.87% | 0.542 | 0.150 |
+
+The benchmark also reports these supervised TF-IDF + logistic-regression reference accuracies: 53.30% on Emotion and 66.63% on SST-2. These references use 1,000 labelled training examples, while Yak receives no benchmark labels.
+
+**Interpretation:** the results are weak on these two transfer tasks and sensitive to candidate-label wording. RLCD does not show a consistent zero-shot advantage over SFT in the committed benchmark artifact. For plain labels, diagnostic temperature fitting improves SFT calibration (Emotion ECE 0.199 to 0.039; SST-2 ECE 0.062 to 0.019), but this uses 1,000 labelled benchmark training examples and must not be described as zero-shot performance.
 
 ## Repository layout
 
