@@ -53,9 +53,9 @@ def main():
         elif len(candidates) == 1:
             checkpoint = candidates[0]
         else:
-            listing = "\\n".join(str(x) for x in candidates) or "(no .pt files found)"
-            raise RuntimeError("Could not select one checkpoint. Found:\\n" + listing +
-                               "\\nPass --checkpoint with the exact file path.")
+            listing = "\n".join(str(x) for x in candidates) or "(no .pt files found)"
+            raise RuntimeError("Could not select one checkpoint. Found:\n" + listing +
+                               "\nPass --checkpoint with the exact file path.")
     if not checkpoint.is_file():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint}")
 
@@ -113,14 +113,14 @@ def main():
     tokenizer_config_path.write_text(json.dumps(tokenizer_config, indent=2), encoding="utf-8")
 
     card = (
-        "---\\nlibrary_name: transformers\\ntags:\\n- yak\\n- text-classification\\n"
-        "- candidate-label-scoring\\n---\\n\\n# Yak candidate-label classifier\\n\\n"
+        "---\nlibrary_name: transformers\ntags:\n- yak\n- text-classification\n"
+        "- candidate-label-scoring\n---\n\n# Yak candidate-label classifier\n\n"
         "Yak scores text-described candidate labels. For each candidate, it applies one shared "
-        "linear scorer to the hidden state at that label's first token. Logits follow candidate order.\\n\\n"
+        "linear scorer to the hidden state at that label's first token. Logits follow candidate order.\n\n"
         f"Hidden size: {width}; attention heads: {args.nhead}; encoder blocks: {args.num_layers}; "
-        f"maximum sequence length: {args.max_seq_len}.\\n\\n"
+        f"maximum sequence length: {args.max_seq_len}.\n\n"
         "Use YakTokenizer.pack_candidates(text, candidate_labels), then pass input_ids, "
-        "label_positions and label_mask to YakForLabelScoring. The source .pt checkpoint is not included.\\n"
+        "label_positions and label_mask to YakForLabelScoring. The source .pt checkpoint is not included.\n"
     )
     (output / "README.md").write_text(card, encoding="utf-8")
     print(f"Exported {checkpoint} to {output.resolve()}")
