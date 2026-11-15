@@ -5,12 +5,12 @@ from transformers import PreTrainedTokenizer
 
 SPECIALS = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"]
 APOS = re.compile(r"(?<=\w)'(?=\w)")
-PUNCT = re.compile(r"([.,!?;:()\"\\[\\]{}$%&*+/<=>@^_`|~\\\\-])")
+PUNCT = re.compile(r"([.,!?;:()\"\[\]{}$%&*+/<=>@^_`|~\\-])")
 SPACES = re.compile(r"\s+")
 
 def normalize_text(text):
     text = APOS.sub(" '", text)
-    return SPACES.sub(" ", PUNCT.sub(r" \\1 ", text)).strip()
+    return SPACES.sub(" ", PUNCT.sub(r" \1 ", text)).strip()
 
 def normalize_label(text):
     return SPACES.sub(" ", text.replace("_", " ").replace("-", " ")).strip()
