@@ -31,7 +31,7 @@ def read_checkpoint(path):
 
 def main():
     p = argparse.ArgumentParser(description="Export Yak classifier to Hugging Face format")
-    p.add_argument("--checkpoint", required=True)
+    p.add_argument("--checkpoint", default=None, help="Exact checkpoint path; omit to auto-discover .pt files under --checkpoint_dir")\n    p.add_argument("--checkpoint_dir", default="runs")
     p.add_argument("--output_dir", default="release/yak-classifier")
     p.add_argument("--tokenizer_file", default="Tokenizer/TokenFile/bpe.json")
     p.add_argument("--label_metadata", default="Data/processed/label_metadata.json")
