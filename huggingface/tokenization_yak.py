@@ -4,9 +4,9 @@ import re
 from transformers import PreTrainedTokenizer
 
 SPECIALS = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"]
-APOS = re.compile(r"(?<=\\w)'(?=\\w)")
+APOS = re.compile(r"(?<=\w)'(?=\w)")
 PUNCT = re.compile(r"([.,!?;:()\"\\[\\]{}$%&*+/<=>@^_`|~\\\\-])")
-SPACES = re.compile(r"\\s+")
+SPACES = re.compile(r"\s+")
 
 def normalize_text(text):
     text = APOS.sub(" '", text)
