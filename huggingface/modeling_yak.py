@@ -52,13 +52,25 @@ class YakAttention(nn.Module):
         return self.out_proj(y.transpose(1, 2).reshape(b, n, d))
 
 
+class YakFFN(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        d = config.d_model
+        self.linear1 = nn.Linear(d, 4*d)
+        self.linear2 = nn.Linear(4*d, d)
+        self.dropout = nn.Dropout(config.dropout)
+        self.activation = nn.GELU()
+
+    def forward(self, x):
+        return self.dropout(self.linear2(self.activation(self.linear1(x))))
+
+
 class YakBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
         d = config.d_model
         self.attention = YakAttention(config)
-        self.ffn = nn.Sequential(nn.Linear(d, 4*d), nn.GELU(),
-                                 nn.Linear(4*d, d), nn.Dropout(config.dropout))
+        self.ffn = YakFFN(config)
         self.norm1, self.norm2 = nn.LayerNorm(d), nn.LayerNorm(d)
 
     def forward(self, x, mask=None):
