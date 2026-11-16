@@ -334,6 +334,9 @@ Open `Model/OurExperiments/FineTuning/Yak_Finetune_Mixture.ipynb`, point `CKPT` 
 
 Setup instructions for pretraining will be added as that code is cleaned up. The plan is for everything to be runnable from a clean checkout with a single environment file and a handful of documented commands.
 
+## Hugging face model 
+https://huggingface.co/gbalachandhiran/yak-candidate-classifier
+
 ## Contributing
 
 Yak is a team project and we welcome outside help once the core pipeline is stable. If you want to contribute:
