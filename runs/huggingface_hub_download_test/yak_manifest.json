@@ -1,0 +1,16 @@
+{
+  "model_type": "yak-candidate-classifier",
+  "architecture": "YakClassifier",
+  "candidate_label_scoring": "shared Linear(d_model, 1) over first-token hidden states",
+  "tokenizer": "Yak custom BPE; use bpe.json and yak_inference.py",
+  "tasks": [
+    "banking77",
+    "clinc",
+    "snli"
+  ],
+  "max_seq_len": 2048,
+  "max_text_tokens": 96,
+  "max_premise_tokens": 64,
+  "max_hypothesis_tokens": 32,
+  "max_label_tokens": 12
+}
